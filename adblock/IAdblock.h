@@ -4,7 +4,7 @@
  * \author yorath
  * \date October 11, 2013
  *
- * \details 
+ * \details Virtual class for exporting interface
  */
 
 #pragma once

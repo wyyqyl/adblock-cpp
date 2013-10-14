@@ -4,7 +4,7 @@
  * \author yorath
  * \date October 11, 2013
  *
- * \details 
+ * \details The manager of all the sub-modules
  */
 
 #pragma once
