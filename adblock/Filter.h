@@ -21,6 +21,13 @@
 
 namespace NS_ADBLOCK {
 
+  class Filter;
+
+  /**
+   * shared_ptr of Filter to help manage the memory
+   */
+  typedef boost::shared_ptr<Filter> FilterPtr;
+
   /**
    * Base Filter class
    */
@@ -30,10 +37,22 @@ namespace NS_ADBLOCK {
     virtual ~Filter() { }
 
     /**
-     * Removes unnecessary whitespace from filter text, will only return
-     * null if the input parameter is null.
+     * text -> filter mapping
      */
-    static std::string normalize(std::string text);
+    typedef boost::unordered_map<std::string, FilterPtr> KnownFilters;
+
+    /**
+     * parsed filters is stored in it
+     */
+    static KnownFilters known_filters_;
+
+    /**
+     * Creates a filter of correct type from its text representation
+     * - does the basic parsing and calls the right constructor then.
+     */
+    static FilterPtr from_text(std::string text);
+
+    friend std::ostream &operator<<(std::ostream &, const Filter &);
 
   protected:
     /**
@@ -57,13 +76,14 @@ namespace NS_ADBLOCK {
     static const boost::regex options_;
 
   private:
-    friend std::ostream &operator<<(std::ostream &, const Filter &);
+    /**
+     * Removes unnecessary whitespace from filter text, will only return
+     * null if the input parameter is null.
+     */
+    static std::string normalize(std::string text);
+
   };
 
-  /**
-   * shared_ptr of Filter to help manage the memory
-   */
-  typedef boost::shared_ptr<Filter> FilterPtr;
 
   /**
    * Class for invalid filters
@@ -168,9 +188,14 @@ namespace NS_ADBLOCK {
   public:
     RegExpFilter(const std::string &text, const std::string &regex_source,
       uint32_t content_type, bool match_case, const std::string &domains,
-      boost::tribool third_party);
+      const boost::tribool &third_party);
 
     const boost::regex &get_regex();
+
+    /**
+     * Creates a RegExp filter from its text representation
+     */
+    static FilterPtr from_text(const std::string &text);
 
     /*!
      * Tests whether the URL matches this filter
@@ -259,6 +284,21 @@ namespace NS_ADBLOCK {
   public:
     ElemHideBase(const std::string &text, const std::string &domains,
       const std::string &selector);
+
+    /*
+     * Creates an element hiding filter from a pre-parsed text representation
+     *
+     * \param text same as in Filter()
+     * \param domain domain part of the text representation (can be empty)
+     * \param tag_name tag name part (can be empty)
+     * \param attr_rules attribute matching rules (can be empty)
+     * \param selector raw CSS selector (can be empty)
+     *
+     * \return {ElemHideFilter|ElemHideException|InvalidFilter}
+     */
+    static FilterPtr from_text(const std::string &text, 
+      const std::string &domain, bool is_exception, std::string &tag_name,
+      const std::string &attr_rules, std::string &selector);
 
   protected:
     /**

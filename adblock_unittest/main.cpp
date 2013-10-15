@@ -1,5 +1,8 @@
 #include "../adblock/IAdblock.h"
 #include "../adblock/Filter.h"
+
+#include <string>
+#include <fstream>
 #include <tchar.h>
 #include <gtest/gtest.h>
 
@@ -10,9 +13,17 @@
 #endif
 
 TEST(FilterTest, Normalize) {
-  EXPECT_EQ("! *** easylist:easylist/easylist_general_block.txt ***",
-    NS_ADBLOCK::Filter::normalize("  \t! *** easylist:easylist/easylist_general_block.txt ***  "));
-  std::cout << NS_ADBLOCK::Filter::normalize("nwanime.com##div[style=\"margin: auto; display: block; width: 728px; height: 90px; overflow: hidden;\"]");
+  std::string line;
+  std::ifstream file;
+  
+  file.open("easylist.txt");
+  if (file.is_open()) {
+    while (!file.eof()) {
+      std::getline(file, line);
+      NS_ADBLOCK::Filter::from_text(line);
+    }
+    file.close();
+  }
 }
 
 int main(int argc, TCHAR *argv[]) {

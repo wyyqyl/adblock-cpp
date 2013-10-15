@@ -21,6 +21,8 @@ namespace NS_ADBLOCK {
   }
 
 
+  Filter::KnownFilters Filter::known_filters_;
+
   std::string Filter::normalize(std::string text) {
     if (text.length() == 0) {
       return text;
@@ -38,7 +40,7 @@ namespace NS_ADBLOCK {
     } else if (boost::regex_search(text, Filter::elem_hide_)) {
       // Special treatment for element hiding filters, right side is allowed to contain spaces
       boost::smatch match;
-      if (boost::regex_match(text, match, boost::regex("^(.*?)(#\\@?#?)(.*)$"))) {
+      if (boost::regex_search(text, match, boost::regex("^(.*?)(#\\@?#?)(.*)$"))) {
         //std::cout << match[1].str() << " " << match[2].str() << " " << match[3].str() << std::endl;
         return boost::regex_replace(match[1].str(), boost::regex("\\s"), "")
           + match[2].str() + boost::regex_replace(
@@ -48,6 +50,35 @@ namespace NS_ADBLOCK {
       }
     }
     return boost::regex_replace(text, boost::regex("\\s"), "");
+  }
+
+  FilterPtr Filter::from_text(std::string text) {
+    FilterPtr result = nullptr;
+
+    text = normalize(text);
+    if (text.length() == 0) {
+      return nullptr;
+    }
+
+    auto iter = known_filters_.find(text);
+    if (iter != known_filters_.end()) {
+      return iter->second;
+    }
+
+    if (text.front() == '!') {
+      result = FilterPtr(new CommentFilter(text));
+    } else if (text.find('#') != std::string::npos) {
+      boost::smatch match;
+      if (boost::regex_search(text, match, elem_hide_)) {
+        result = ElemHideBase::from_text(text, match[1].str(),
+          match[2].matched, match[3].str(), match[4].str(), match[5].str());
+      }
+    } else {
+      result = RegExpFilter::from_text(text);
+    }
+
+    known_filters_[result->text_] = result;
+    return result;
   }
 
 
@@ -166,23 +197,26 @@ namespace NS_ADBLOCK {
   }
 
 
-#define TYPE_OTHER              1 << 0
-#define TYPE_SCRIPT             1 << 1
-#define TYPE_IMAGE              1 << 2
-#define TYPE_STYLESHEET         1 << 3
-#define TYPE_OBJECT             1 << 4
-#define TYPE_SUBDOCUMENT        1 << 5
-#define TYPE_DOCUMENT           1 << 6
-#define TYPE_XBL                1 << 0
-#define TYPE_PING               1 << 0
-#define TYPE_XMLHTTPREQUEST     1 << 11
-#define TYPE_OBJECT_SUBREQUEST  1 << 12
-#define TYPE_DTD                1 << 0
-#define TYPE_MEDIA              1 << 14
-#define TYPE_FONT               1 << 15
-#define TYPE_BACKGROUND         1 << 2
-#define TYPE_POPUP              1 << 29
-#define TYPE_ELEMHIDE           1 << 30
+#define TYPE_OTHER              (1 << 0)
+#define TYPE_SCRIPT             (1 << 1)
+#define TYPE_IMAGE              (1 << 2)
+#define TYPE_STYLESHEET         (1 << 3)
+#define TYPE_OBJECT             (1 << 4)
+#define TYPE_SUBDOCUMENT        (1 << 5)
+#define TYPE_DOCUMENT           (1 << 6)
+#define TYPE_XBL                (1 << 0)
+#define TYPE_PING               (1 << 0)
+#define TYPE_XMLHTTPREQUEST     (1 << 11)
+#define TYPE_OBJECT_SUBREQUEST  (1 << 12)
+#define TYPE_DTD                (1 << 0)
+#define TYPE_MEDIA              (1 << 14)
+#define TYPE_FONT               (1 << 15)
+#define TYPE_BACKGROUND         (1 << 2)
+#define TYPE_POPUP              (1 << 29)
+#define TYPE_ELEMHIDE           (1 << 30)
+
+#define ALL_CONTENT_TYPE        0x7FFFFFFF
+#define DEFAULT_CONTENT_TYPE    ALL_CONTENT_TYPE & ~(TYPE_POPUP | TYPE_ELEMHIDE)
 
   const RegExpFilter::TypeMap RegExpFilter::type_map_ = boost::assign::map_list_of
     ("OTHER", TYPE_OTHER)
@@ -209,7 +243,7 @@ namespace NS_ADBLOCK {
     uint32_t content_type,
     bool match_case,
     const std::string &domains,
-    boost::tribool third_party
+    const boost::tribool &third_party
     ): ActiveFilter(text, domains)
   {
     domain_separator_ = "|";
@@ -267,6 +301,104 @@ namespace NS_ADBLOCK {
       regex_source_.clear();
     }
     return regexp_;
+  }
+
+  FilterPtr RegExpFilter::from_text(const std::string &text) {
+    bool blocking = true;
+    std::string regex_source = text;
+
+    if (regex_source.find("@@") == 0) {
+      blocking = false;
+      regex_source = regex_source.substr(2);
+    }
+
+    std::vector<std::string> options;
+    uint32_t content_type = ALL_CONTENT_TYPE;
+    bool match_case = false;
+    std::string domains;
+    boost::tribool third_party = boost::indeterminate;
+    bool collapse = false;
+    std::vector<std::string> site_keys;
+    if (regex_source.find('$') != std::string::npos) {
+      boost::smatch match;
+      if (boost::regex_search(regex_source, match, options_)) {
+        boost::split(options, boost::to_upper_copy(match[1].str()),
+          boost::is_any_of(","), boost::token_compress_on);
+        regex_source = std::string(regex_source.begin(), match[0].first);
+
+        for (auto option = options.begin(); option != options.end(); ++option) {
+          std::string value;
+          size_t separator_idx = option->find('=');
+          if (separator_idx != std::string::npos) {
+            value = option->substr(separator_idx + 1);
+            *option = option->substr(0, separator_idx);
+          }
+          *option = boost::regex_replace(*option, boost::regex("-"), "_");
+
+          auto type_value = type_map_.find(*option);
+          if (type_value != type_map_.end()) {
+            if (content_type == ALL_CONTENT_TYPE) {
+              content_type = 0;
+            }
+            content_type |= type_value->second;
+          } else if (option->front() == '~' &&
+            (type_value = type_map_.find(option->substr(1))) != type_map_.end())
+          {
+            if (content_type == ALL_CONTENT_TYPE) {
+              content_type = DEFAULT_CONTENT_TYPE;
+            }
+            content_type &= ~type_value->second;
+          } else if (*option == "MATCH_CASE") {
+            match_case = true;
+          } else if (*option == "~MATCH_CASE") {
+            match_case = false;
+          } else if (*option == "DOMAIN" && value.length() > 0) {
+            domains = value;
+          } else if (*option == "THIRD_PARTY") {
+            third_party = true;
+          } else if (*option == "~THIRD_PARTY") {
+            third_party = false;
+          } else if (*option == "COLLAPSE") {
+            collapse = true;
+          } else if (*option == "~COLLAPSE") {
+            collapse = false;
+          } else if (*option == "SITEKEY" && value.length() > 0) {
+            boost::split(site_keys, value, boost::is_any_of("|"),
+              boost::token_compress_on);
+          } else {
+            return FilterPtr(new InvalidFilter(text,
+              "Unknown option" + boost::to_lower_copy(*option)));
+          }
+        }
+      }
+    }
+
+    if (!blocking && (content_type == ALL_CONTENT_TYPE || (content_type & TYPE_DOCUMENT)) &&
+      (options.size() > 0 || std::find(options.begin(), options.end(), "DOCUMENT") == options.end()) &&
+      !boost::regex_search(regex_source, boost::regex("^\\|?[\\w\\-]+:")))
+    {
+      // Exception filters shouldn't apply to pages by default unless
+      // they start with a protocol name
+      if (content_type == ALL_CONTENT_TYPE) {
+        content_type = DEFAULT_CONTENT_TYPE;
+      }
+      content_type &= ~TYPE_DOCUMENT;
+    }
+    if (!blocking && site_keys.size() > 0) {
+      content_type = TYPE_DOCUMENT;
+    }
+
+    try {
+      if (blocking) {
+        return FilterPtr(new BlockingFilter(text, regex_source,
+          content_type, match_case, domains, third_party, collapse));
+      } else {
+        return FilterPtr(new WhitelistFilter(text, regex_source,
+          content_type, match_case, domains, third_party, site_keys));
+      }
+    } catch (const std::exception &e) {
+      return FilterPtr(new InvalidFilter(text, e.what()));
+    }
   }
 
   bool RegExpFilter::matches(
@@ -330,6 +462,57 @@ namespace NS_ADBLOCK {
     selector_ = selector;
     domain_separator_ = ",";
     ignore_trailong_dot_ = false;
+  }
+
+  NS_ADBLOCK::FilterPtr ElemHideBase::from_text(
+    const std::string &text,
+    const std::string &domain,
+    bool is_exception,
+    std::string &tag_name,
+    const std::string &attr_rules,
+    std::string &selector
+    )
+  {
+    if (selector.length() == 0) {
+      if (tag_name == "*") {
+        tag_name = "";
+      }
+
+      std::string id;
+      std::string additional;
+      if (attr_rules.length() > 0) {
+        boost::sregex_token_iterator iter(attr_rules.begin(), attr_rules.end(),
+          boost::regex("\\([\\w\\-]+(?:[$^*]?=[^\\(\\)\"]*)?\\)"), 0);
+        boost::sregex_token_iterator end;
+
+        for (; iter != end; ++iter) {
+          std::string rule = *iter;
+          rule = rule.substr(1, rule.length() - 2);
+          size_t separator_pos = rule.find('=');
+          if (separator_pos != std::string::npos) {
+            rule = boost::regex_replace(rule, boost::regex("="), "=\"") + "\"";
+            additional += ("[" + rule + "]");
+          } else {
+            if (id.length() > 0) {
+              return FilterPtr(new InvalidFilter(text, "filter_elemhide_duplicate_id"));
+            } else {
+              id = rule;
+            }
+          }
+        }
+      }
+
+      if (id.length() > 0) {
+        selector = tag_name + "." + id + additional + "," + tag_name + "#" + id + additional;
+      } else {
+        return FilterPtr(new InvalidFilter(text, "filter_elemhide_nocriteria"));
+      }
+    }
+
+    if (is_exception) {
+      return FilterPtr(new ElemHideException(text, domain, selector));
+    }
+    return FilterPtr(new ElemHideFilter(text, domain, selector));
   }
 
 }
