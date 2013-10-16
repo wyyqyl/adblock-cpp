@@ -148,7 +148,6 @@ namespace NS_ADBLOCK {
     whitelist_.clear();
     keys_.clear();
     result_cache_.clear();
-    cache_entries = 0;
   }
 
   void CombindMatcher::add(const RegExpFilterPtr &filter) {
@@ -165,9 +164,8 @@ namespace NS_ADBLOCK {
       blacklist_.add(filter);
     }
 
-    if (cache_entries > 0) {
+    if (result_cache_.size() > 0) {
       result_cache_.clear();
-      cache_entries = 0;
     }
   }
 
@@ -185,9 +183,8 @@ namespace NS_ADBLOCK {
       blacklist_.remove(filter);
     }
 
-    if (cache_entries > 0) {
+    if (result_cache_.size() > 0) {
       result_cache_.clear();
-      cache_entries = 0;
     }
   }
 
@@ -263,13 +260,11 @@ namespace NS_ADBLOCK {
     }
 
     RegExpFilterPtr result = matches_any_internal(location, content_type, doc_domain, third_party);
-    if (cache_entries >= MaxCacheEntries) {
+    if (result_cache_.size() >= MaxCacheEntries) {
       result_cache_.clear();
-      cache_entries = 0;
     }
 
     result_cache_[key.str()] = result;
-    ++cache_entries;
 
     return result;
   }

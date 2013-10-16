@@ -171,11 +171,6 @@ namespace NS_ADBLOCK {
      */
     ResultCache result_cache_;
 
-    /**
-     * Number of entries in resultCache
-     */
-    uint32_t cache_entries;
-
     static const uint32_t MaxCacheEntries;
 
     /**
