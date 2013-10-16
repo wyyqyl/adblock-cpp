@@ -14,10 +14,12 @@
     <ClInclude Include="Adblock.h" />
     <ClInclude Include="Filter.h" />
     <ClInclude Include="IAdblock.h" />
+    <ClInclude Include="Matcher.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Adblock.cpp" />
     <ClCompile Include="Filter.cpp" />
+    <ClCompile Include="Matcher.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{6E7EB454-D157-4BF6-891B-F7480ADBCC6D}</ProjectGuid>

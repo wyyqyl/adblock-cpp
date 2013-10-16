@@ -24,12 +24,18 @@
     <ClInclude Include="Adblock.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Matcher.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Filter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Adblock.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Matcher.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

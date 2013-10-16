@@ -21,6 +21,19 @@
 
 namespace NS_ADBLOCK {
 
+  typedef enum {
+    FILTER,
+    ACTIVE_FILTER,
+    COMMENT_FILTER,
+    INVALID_FILTER,
+    ELEM_HIDE_BASE,
+    ELEM_HIDE_EXCEPTION,
+    ELEM_HIDE_FILTER,
+    REGEXP_FILTER,
+    BLOCKING_FILTER,
+    WHITELIST_FILTER
+  } FILTER_TYPE;
+
   class Filter;
 
   /**
@@ -37,9 +50,19 @@ namespace NS_ADBLOCK {
     virtual ~Filter() { }
 
     /**
+     * Retrieve filter type at runtime
+     */
+    virtual FILTER_TYPE get_type() const { return FILTER; }
+
+    /**
      * text -> filter mapping
      */
     typedef boost::unordered_map<std::string, FilterPtr> KnownFilters;
+
+    /**
+     * Retrieve text representation of filter
+     */
+    const std::string &get_text();
 
     /**
      * parsed filters is stored in it
@@ -54,26 +77,26 @@ namespace NS_ADBLOCK {
 
     friend std::ostream &operator<<(std::ostream &, const Filter &);
 
+    /**
+     * Regular expression that element hiding filters should match
+     */
+    static const boost::regex ElemHideRegex;
+
+    /**
+     * Regular expression that RegExp filters specified as RegExps should match
+     */
+    static const boost::regex RegexRegex;
+
+    /**
+     * Regular expression that options on a RegExp filter should match
+     */
+    static const boost::regex OptionsRegex;
+
   protected:
     /**
      * string representation of the Filter
      */
     std::string text_;
-
-    /**
-     * Regular expression that element hiding filters should match
-     */
-    static const boost::regex elem_hide_;
-
-    /**
-     * Regular expression that RegExp filters specified as RegExps should match
-     */
-    static const boost::regex regexp_;
-
-    /**
-     * Regular expression that options on a RegExp filter should match
-     */
-    static const boost::regex options_;
 
   private:
     /**
@@ -93,6 +116,11 @@ namespace NS_ADBLOCK {
     InvalidFilter(const std::string &text, const std::string &reason):
         Filter(text) { reason_ = reason; }
 
+    /**
+     * @see Filter#type
+     */
+    FILTER_TYPE get_type() const { return INVALID_FILTER; }
+
   private:
     std::string reason_;
   };
@@ -104,6 +132,11 @@ namespace NS_ADBLOCK {
   class CommentFilter: public Filter {
   public:
     CommentFilter(const std::string &text): Filter(text) { }
+
+    /**
+     * @see Filter#type
+     */
+    FILTER_TYPE get_type() const { return COMMENT_FILTER; }
   };
 
 
@@ -113,6 +146,11 @@ namespace NS_ADBLOCK {
   class ActiveFilter: public Filter {
   public:
     ActiveFilter(const std::string &text, const std::string &domains);
+
+    /**
+     * @see Filter#type
+     */
+    FILTER_TYPE get_type() const { return ACTIVE_FILTER; }
 
     bool get_disabled() const;
     void set_disabled(bool disabled);
@@ -190,6 +228,11 @@ namespace NS_ADBLOCK {
       uint32_t content_type, bool match_case, const std::string &domains,
       const boost::tribool &third_party);
 
+    /**
+     * @see Filter#type
+     */
+    FILTER_TYPE get_type() const { return REGEXP_FILTER; }
+
     const boost::regex &get_regex();
 
     /**
@@ -247,6 +290,7 @@ namespace NS_ADBLOCK {
     boost::regex regex_;
   };
 
+  typedef boost::shared_ptr<RegExpFilter> RegExpFilterPtr;
 
   /**
    * Class for blocking filters
@@ -257,9 +301,16 @@ namespace NS_ADBLOCK {
       uint32_t content_type, bool match_case, const std::string &domains,
       const boost::tribool &third_party, bool collapse);
 
+    /**
+     * @see Filter#type
+     */
+    FILTER_TYPE get_type() const { return BLOCKING_FILTER; }
+
   private:
     bool collapse_;
   };
+
+  typedef boost::shared_ptr<BlockingFilter> BlockingFilterPtr;
 
 
   /**
@@ -272,9 +323,30 @@ namespace NS_ADBLOCK {
       uint32_t content_type, bool match_case, const std::string &domains,
       const boost::tribool &third_party, const SiteKeys &site_keys);
 
+    /*
+     * Return the key at index idx
+     *
+     * \param idx key index
+     *
+     * \return key
+     */
+    const std::string &get_key(uint32_t idx) const;
+
+    /**
+     * Get the number of total site keys
+     */
+    uint32_t get_key_num() const;
+
+    /**
+     * @see Filter#type
+     */
+    FILTER_TYPE get_type() const { return WHITELIST_FILTER; }
+
   private:
     SiteKeys site_keys_;
   };
+
+  typedef boost::shared_ptr<WhitelistFilter> WhitelistFilterPtr;
 
 
   /**
@@ -284,6 +356,11 @@ namespace NS_ADBLOCK {
   public:
     ElemHideBase(const std::string &text, const std::string &domains,
       const std::string &selector);
+
+    /**
+     * @see Filter#type
+     */
+    FILTER_TYPE get_type() const { return ELEM_HIDE_BASE; }
 
     /*
      * Creates an element hiding filter from a pre-parsed text representation
@@ -322,6 +399,12 @@ namespace NS_ADBLOCK {
     ElemHideFilter(const std::string &text, const std::string &domains,
       const std::string &selector): ElemHideBase(text, domains, selector)
     { }
+
+    /**
+     * @see Filter#type
+     */
+    FILTER_TYPE get_type() const { return ELEM_HIDE_FILTER; }
+
   };
 
 
@@ -333,6 +416,12 @@ namespace NS_ADBLOCK {
     ElemHideException(const std::string &text, const std::string &domains,
       const std::string &selector): ElemHideBase(text, domains, selector)
     { }
+
+    /**
+     * @see Filter#type
+     */
+    FILTER_TYPE get_type() const { return ELEM_HIDE_EXCEPTION; }
+
   };
 
 }

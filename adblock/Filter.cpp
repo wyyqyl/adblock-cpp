@@ -7,13 +7,13 @@
 
 namespace NS_ADBLOCK {
 
-  const boost::regex Filter::elem_hide_ =
+  const boost::regex Filter::ElemHideRegex =
     boost::regex("^([^\\/\\*\\|\\@\"!]*?)#(\\@)?(?:([\\w\\-]+|\\*)((?:\\([\\w\\-]+(?:[$^*]?=[^\\(\\)\"]*)?\\))*)|#([^{}]+))$");
 
-  const boost::regex Filter::regexp_ =
+  const boost::regex Filter::RegexRegex =
     boost::regex("^(@@)?\\/.*\\/(?:\\$~?[\\w\\-]+(?:=[^,\\s]+)?(?:,~?[\\w\\-]+(?:=[^,\\s]+)?)*)?$");
 
-  const boost::regex Filter::options_ =
+  const boost::regex Filter::OptionsRegex =
     boost::regex("\\$(~?[\\w\\-]+(?:=[^,\\s]+)?(?:,~?[\\w\\-]+(?:=[^,\\s]+)?)*)$");
 
   std::ostream &operator<<(std::ostream &stream, const Filter &filter) {
@@ -22,6 +22,10 @@ namespace NS_ADBLOCK {
 
 
   Filter::KnownFilters Filter::known_filters_;
+
+  const std::string &Filter::get_text() {
+    return text_;
+  }
 
   std::string Filter::normalize(std::string text) {
     if (text.length() == 0) {
@@ -37,7 +41,7 @@ namespace NS_ADBLOCK {
         boost::regex_replace(text, boost::regex("^\\s+"), ""),
         boost::regex("\\s+$"),
         "");
-    } else if (boost::regex_search(text, Filter::elem_hide_)) {
+    } else if (boost::regex_search(text, Filter::ElemHideRegex)) {
       // Special treatment for element hiding filters, right side is allowed to contain spaces
       boost::smatch match;
       if (boost::regex_search(text, match, boost::regex("^(.*?)(#\\@?#?)(.*)$"))) {
@@ -69,7 +73,7 @@ namespace NS_ADBLOCK {
       result = FilterPtr(new CommentFilter(text));
     } else if (text.find('#') != std::string::npos) {
       boost::smatch match;
-      if (boost::regex_search(text, match, elem_hide_)) {
+      if (boost::regex_search(text, match, ElemHideRegex)) {
         result = ElemHideBase::from_text(text, match[1].str(),
           match[2].matched, match[3].str(), match[4].str(), match[5].str());
       }
@@ -300,14 +304,14 @@ namespace NS_ADBLOCK {
       regex_ = boost::regex(source, match_case_ ? 0 : boost::regex::icase);
       regex_source_.clear();
     }
-    return regexp_;
+    return RegexRegex;
   }
 
   FilterPtr RegExpFilter::from_text(const std::string &text) {
     bool blocking = true;
     std::string regex_source = text;
 
-    if (regex_source.find("@@") == 0) {
+    if (regex_source.substr(0, 2) == "@@") {
       blocking = false;
       regex_source = regex_source.substr(2);
     }
@@ -321,7 +325,7 @@ namespace NS_ADBLOCK {
     std::vector<std::string> site_keys;
     if (regex_source.find('$') != std::string::npos) {
       boost::smatch match;
-      if (boost::regex_search(regex_source, match, options_)) {
+      if (boost::regex_search(regex_source, match, OptionsRegex)) {
         boost::split(options, boost::to_upper_copy(match[1].str()),
           boost::is_any_of(","), boost::token_compress_on);
         regex_source = std::string(regex_source.begin(), match[0].first);
@@ -448,6 +452,14 @@ namespace NS_ADBLOCK {
     site_keys_ = site_keys;
   }
 
+  const std::string & WhitelistFilter::get_key(uint32_t idx) const {
+    return site_keys_[idx];
+  }
+
+  uint32_t WhitelistFilter::get_key_num() const {
+    return site_keys_.size();
+  }
+
 
   ElemHideBase::ElemHideBase(
     const std::string &text,
@@ -464,7 +476,7 @@ namespace NS_ADBLOCK {
     ignore_trailong_dot_ = false;
   }
 
-  NS_ADBLOCK::FilterPtr ElemHideBase::from_text(
+  FilterPtr ElemHideBase::from_text(
     const std::string &text,
     const std::string &domain,
     bool is_exception,
@@ -481,12 +493,12 @@ namespace NS_ADBLOCK {
       std::string id;
       std::string additional;
       if (attr_rules.length() > 0) {
-        boost::sregex_token_iterator iter(attr_rules.begin(), attr_rules.end(),
+        auto iter = make_regex_token_iterator(attr_rules,
           boost::regex("\\([\\w\\-]+(?:[$^*]?=[^\\(\\)\"]*)?\\)"), 0);
-        boost::sregex_token_iterator end;
+        decltype(iter) end;
 
-        for (; iter != end; ++iter) {
-          std::string rule = *iter;
+        while (iter != end) {
+          std::string rule = iter++->str();
           rule = rule.substr(1, rule.length() - 2);
           size_t separator_pos = rule.find('=');
           if (separator_pos != std::string::npos) {
