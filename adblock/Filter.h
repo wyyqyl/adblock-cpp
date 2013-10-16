@@ -310,8 +310,6 @@ namespace NS_ADBLOCK {
     bool collapse_;
   };
 
-  typedef boost::shared_ptr<BlockingFilter> BlockingFilterPtr;
-
 
   /**
    * Class for whitelist filters
@@ -345,8 +343,6 @@ namespace NS_ADBLOCK {
   private:
     SiteKeys site_keys_;
   };
-
-  typedef boost::shared_ptr<WhitelistFilter> WhitelistFilterPtr;
 
 
   /**
