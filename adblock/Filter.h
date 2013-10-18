@@ -12,7 +12,6 @@
 
 #include <cstdint>
 #include <string>
-#include <boost/container/map.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/regex.hpp>
@@ -167,7 +166,7 @@ namespace NS_ADBLOCK {
      * 
      * bool: true if the domain is active
      */
-    typedef boost::container::map<std::string, bool> DomainMap;
+    typedef boost::unordered_map<std::string, bool> DomainMap;
 
     /**
      * Parse domains from class member domain_source_
@@ -358,6 +357,11 @@ namespace NS_ADBLOCK {
      */
     FILTER_TYPE get_type() const { return ELEM_HIDE_BASE; }
 
+    /**
+     * Get selector
+     */
+    const std::string &get_selector() const;
+
     /*
      * Creates an element hiding filter from a pre-parsed text representation
      *
@@ -386,6 +390,8 @@ namespace NS_ADBLOCK {
     std::string selector_;
   };
 
+  typedef boost::shared_ptr<ElemHideBase> ElemHideBasePtr;
+
 
   /**
    * Class for element hiding filters
@@ -403,6 +409,8 @@ namespace NS_ADBLOCK {
 
   };
 
+  typedef boost::shared_ptr<ElemHideFilter> ElemHideFilterPtr;
+
 
   /**
    * Class for element hiding exceptions
@@ -419,6 +427,8 @@ namespace NS_ADBLOCK {
     FILTER_TYPE get_type() const { return ELEM_HIDE_EXCEPTION; }
 
   };
+
+  typedef boost::shared_ptr<ElemHideException> ElemHideExceptionPtr;
 
 }
 

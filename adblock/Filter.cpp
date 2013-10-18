@@ -3,6 +3,7 @@
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/assign/list_of.hpp>
+#include <boost/logic/tribool_io.hpp>
 
 
 namespace NS_ADBLOCK {
@@ -216,7 +217,7 @@ namespace NS_ADBLOCK {
 #define TYPE_MEDIA              (1 << 14)
 #define TYPE_FONT               (1 << 15)
 #define TYPE_BACKGROUND         (1 << 2)
-#define TYPE_POPUP              (1 << 29)
+#define TYPE_POPUP              (1 << 28)
 #define TYPE_ELEMHIDE           (1 << 30)
 
 #define ALL_CONTENT_TYPE        0x7FFFFFFF
@@ -394,9 +395,13 @@ namespace NS_ADBLOCK {
 
     try {
       if (blocking) {
+        //std::cout << std::boolalpha << BLOCKING_FILTER << regex_source <<
+        //  std::hex << content_type << match_case << domains << third_party << std::endl;
         return FilterPtr(new BlockingFilter(text, regex_source,
           content_type, match_case, domains, third_party, collapse));
       } else {
+        //std::cout << std::boolalpha << WHITELIST_FILTER << regex_source <<
+        //  std::hex << content_type << match_case << domains << third_party << std::endl;
         return FilterPtr(new WhitelistFilter(text, regex_source,
           content_type, match_case, domains, third_party, site_keys));
       }
@@ -476,6 +481,11 @@ namespace NS_ADBLOCK {
     ignore_trailong_dot_ = false;
   }
 
+  const std::string & ElemHideBase::get_selector() const {
+    return selector_;
+  }
+
+
   FilterPtr ElemHideBase::from_text(
     const std::string &text,
     const std::string &domain,
@@ -522,8 +532,10 @@ namespace NS_ADBLOCK {
     }
 
     if (is_exception) {
+      //std::cout << ELEM_HIDE_EXCEPTION << domain << selector << std::endl;
       return FilterPtr(new ElemHideException(text, domain, selector));
     }
+    //std::cout << ELEM_HIDE_FILTER << domain << selector << std::endl;
     return FilterPtr(new ElemHideFilter(text, domain, selector));
   }
 

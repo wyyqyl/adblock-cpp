@@ -252,7 +252,7 @@ namespace NS_ADBLOCK {
     )
   {
     std::stringstream key;
-    key << location << " " << content_type << " " << doc_domain << " " << third_party;
+    key << std::boolalpha << location << " " << content_type << " " << doc_domain << " " << third_party;
 
     auto iter = result_cache_.find(key.str());
     if (iter != result_cache_.end()) {
