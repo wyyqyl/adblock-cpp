@@ -72,16 +72,18 @@ namespace NS_ADBLOCK {
 
     if (text.front() == '!') {
       result = FilterPtr(new CommentFilter(text));
+      goto done;
     } else if (text.find('#') != std::string::npos) {
       boost::smatch match;
       if (boost::regex_search(text, match, ElemHideRegex)) {
         result = ElemHideBase::from_text(text, match[1].str(),
           match[2].matched, match[3].str(), match[4].str(), match[5].str());
+        goto done;
       }
-    } else {
-      result = RegExpFilter::from_text(text);
     }
+    result = RegExpFilter::from_text(text);
 
+  done:
     known_filters_[result->text_] = result;
     return result;
   }
@@ -202,23 +204,23 @@ namespace NS_ADBLOCK {
   }
 
 
-#define TYPE_OTHER              (1 << 0)
-#define TYPE_SCRIPT             (1 << 1)
-#define TYPE_IMAGE              (1 << 2)
-#define TYPE_STYLESHEET         (1 << 3)
-#define TYPE_OBJECT             (1 << 4)
-#define TYPE_SUBDOCUMENT        (1 << 5)
-#define TYPE_DOCUMENT           (1 << 6)
-#define TYPE_XBL                (1 << 0)
-#define TYPE_PING               (1 << 0)
-#define TYPE_XMLHTTPREQUEST     (1 << 11)
-#define TYPE_OBJECT_SUBREQUEST  (1 << 12)
-#define TYPE_DTD                (1 << 0)
-#define TYPE_MEDIA              (1 << 14)
-#define TYPE_FONT               (1 << 15)
-#define TYPE_BACKGROUND         (1 << 2)
-#define TYPE_POPUP              (1 << 28)
-#define TYPE_ELEMHIDE           (1 << 30)
+#define TYPE_OTHER              0x00000001
+#define TYPE_SCRIPT             0x00000002
+#define TYPE_IMAGE              0x00000004
+#define TYPE_STYLESHEET         0x00000008
+#define TYPE_OBJECT             0x00000010
+#define TYPE_SUBDOCUMENT        0x00000020
+#define TYPE_DOCUMENT           0x00000040
+#define TYPE_XBL                0x00000001
+#define TYPE_PING               0x00000001
+#define TYPE_XMLHTTPREQUEST     0x00000800
+#define TYPE_OBJECT_SUBREQUEST  0x00001000
+#define TYPE_DTD                0x00000001
+#define TYPE_MEDIA              0x00004000
+#define TYPE_FONT               0x00008000
+#define TYPE_BACKGROUND         0x00000004
+#define TYPE_POPUP              0x10000000
+#define TYPE_ELEMHIDE           0x40000000
 
 #define ALL_CONTENT_TYPE        0x7FFFFFFF
 #define DEFAULT_CONTENT_TYPE    ALL_CONTENT_TYPE & ~(TYPE_POPUP | TYPE_ELEMHIDE)
@@ -322,7 +324,7 @@ namespace NS_ADBLOCK {
     bool match_case = false;
     std::string domains;
     boost::tribool third_party = boost::indeterminate;
-    bool collapse = false;
+    bool collapse = true;
     std::vector<std::string> site_keys;
     if (regex_source.find('$') != std::string::npos) {
       boost::smatch match;
@@ -379,7 +381,7 @@ namespace NS_ADBLOCK {
     }
 
     if (!blocking && (content_type == ALL_CONTENT_TYPE || (content_type & TYPE_DOCUMENT)) &&
-      (options.size() > 0 || std::find(options.begin(), options.end(), "DOCUMENT") == options.end()) &&
+      (options.size() == 0 || std::find(options.begin(), options.end(), "DOCUMENT") == options.end()) &&
       !boost::regex_search(regex_source, boost::regex("^\\|?[\\w\\-]+:")))
     {
       // Exception filters shouldn't apply to pages by default unless
@@ -395,13 +397,13 @@ namespace NS_ADBLOCK {
 
     try {
       if (blocking) {
-        //std::cout << std::boolalpha << BLOCKING_FILTER << regex_source <<
-        //  std::hex << content_type << match_case << domains << third_party << std::endl;
+        std::cout << std::boolalpha << BLOCKING_FILTER << regex_source <<
+          std::hex << content_type << match_case << domains << third_party << std::endl;
         return FilterPtr(new BlockingFilter(text, regex_source,
           content_type, match_case, domains, third_party, collapse));
       } else {
-        //std::cout << std::boolalpha << WHITELIST_FILTER << regex_source <<
-        //  std::hex << content_type << match_case << domains << third_party << std::endl;
+        std::cout << std::boolalpha << WHITELIST_FILTER << regex_source <<
+          std::hex << content_type << match_case << domains << third_party << std::endl;
         return FilterPtr(new WhitelistFilter(text, regex_source,
           content_type, match_case, domains, third_party, site_keys));
       }
@@ -532,10 +534,10 @@ namespace NS_ADBLOCK {
     }
 
     if (is_exception) {
-      //std::cout << ELEM_HIDE_EXCEPTION << domain << selector << std::endl;
+      std::cout << ELEM_HIDE_EXCEPTION << domain << selector << std::endl;
       return FilterPtr(new ElemHideException(text, domain, selector));
     }
-    //std::cout << ELEM_HIDE_FILTER << domain << selector << std::endl;
+    std::cout << ELEM_HIDE_FILTER << domain << selector << std::endl;
     return FilterPtr(new ElemHideFilter(text, domain, selector));
   }
 
