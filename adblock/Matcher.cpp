@@ -97,7 +97,7 @@ namespace NS_ADBLOCK {
     const std::string &location,
     const std::string &content_type,
     const std::string &doc_domain,
-    const boost::tribool &third_party
+    bool third_party
     )
   {
     auto token_iter = make_regex_token_iterator(
@@ -124,7 +124,7 @@ namespace NS_ADBLOCK {
     const std::string &location,
     const std::string &content_type,
     const std::string &doc_domain,
-    const boost::tribool &third_party
+    bool third_party
     )
   {
     auto iter = filter_by_keyword_.find(keyword);
@@ -216,7 +216,7 @@ namespace NS_ADBLOCK {
     const std::string &location,
     const std::string &content_type,
     const std::string &doc_domain,
-    const boost::tribool &third_party
+    bool third_party
     )
   {
     auto token_iter = make_regex_token_iterator(
@@ -248,7 +248,7 @@ namespace NS_ADBLOCK {
     const std::string &location,
     const std::string &content_type,
     const std::string &doc_domain,
-    const boost::tribool &third_party
+    bool third_party
     )
   {
     std::stringstream key;

@@ -64,14 +64,14 @@ namespace NS_ADBLOCK {
      */
     RegExpFilterPtr matches_any(const std::string &location,
       const std::string &content_type, const std::string &doc_domain,
-      const boost::tribool &third_party);
+      bool third_party);
     
     /**
      * Checks whether the entries for a particular keyword match a URL
      */
     RegExpFilterPtr check_entry_match(const std::string &keyword,
       const std::string &location, const std::string &content_type,
-      const std::string &doc_domain, const boost::tribool &third_party);
+      const std::string &doc_domain, bool third_party);
 
   private:
     typedef boost::unordered_map<std::string, std::vector<RegExpFilterPtr>> FilterByKeyword;
@@ -138,7 +138,7 @@ namespace NS_ADBLOCK {
      */
     RegExpFilterPtr matches_any(const std::string &location,
       const std::string &content_type, const std::string &doc_domain,
-      const boost::tribool &third_party);
+      bool third_party);
 
     /**
      * Looks up whether any filters match the given website key.
@@ -180,7 +180,7 @@ namespace NS_ADBLOCK {
      */
     RegExpFilterPtr matches_any_internal(const std::string &location,
       const std::string &content_type, const std::string &doc_domain,
-      const boost::tribool &third_party);
+      bool third_party);
 
   };
 
